@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CodeAlpha | Simple E-commerce Store</title>
+    <style>
+        /* CSS Styling */
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; margin: 0; padding: 0; }
+        nav { background: #232f3e; color: white; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 1000; }
+        .nav-right { display: flex; align-items: center; gap: 15px; }
+        input { padding: 8px; border-radius: 4px; border: 1px solid #ccc; }
+        button { padding: 8px 15px; border-radius: 4px; border: none; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        .btn-auth { background: #febd69; color: #131921; }
+        .btn-auth:hover { background: #f3a847; }
+        .btn-add { background: #ffa41c; color: black; width: 100%; margin-top: 10px; }
+        .btn-logout { background: #d9534f; color: white; }
+        
+        .container { max-width: 1100px; margin: 20px auto; padding: 0 20px; }
+        .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 25px; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); text-align: center; }
+        .card img { max-width: 100%; height: 180px; object-fit: contain; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        .price { font-size: 1.2rem; color: #b12704; font-weight: bold; }
+        
+        #cart-count { background: #ffa41c; color: black; padding: 2px 8px; border-radius: 50%; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <nav>
+        <h2 style="margin:0;">CodeAlpha Shop</h2>
+        
+        <div id="auth-ui" class="nav-right">
+            <input type="email" id="email" placeholder="Email">
+            <input type="password" id="pass" placeholder="Password">
+            <button class="btn-auth" onclick="handleAuth('register')">Register</button>
+            <button class="btn-auth" onclick="handleAuth('login')">Login</button>
+        </div>
+
+        <div id="user-ui" class="nav-right" style="display:none;">
+            <span id="logged-user"></span>
+            <span>🛒 <span id="cart-count">0</span></span>
+            <button class="btn-logout" onclick="logout()">Logout</button>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h1 id="welcome-msg">Explore our Products</h1>
+        <div class="product-grid" id="products">
+            </div>
+    </div>
+
+    <script>
+        const API = "http://localhost:5000/api";
+        let cartCount = 0;
+
+        // --- 1. AUTHENTICATION LOGIC ---
+        async function handleAuth(type) {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('pass').value;
+
+            if (!email || !password) return alert("Please fill all fields");
+
+            try {
+                const res = await fetch(`${API}/${type}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await res.json();
+
+                if (res.ok) {
+                    if (type === 'register') {
+                        alert("Registration successful! Now please Login.");
+                    } else {
+                        // Login successful
+                        localStorage.setItem('token', data.token);
+                        localStorage.setItem('userEmail', data.email);
+                        updateUI(data.email);
+                        alert("Welcome back!");
+                    }
+                } else {
+                    alert(data.error || data.message || "Action failed");
+                }
+            } catch (err) {
+                console.error("Error:", err);
+                alert("Cannot connect to Backend. Is 'node server.js' running?");
+            }
+        }
+
+        function updateUI(email) {
+            document.getElementById('auth-ui').style.display = 'none';
+            document.getElementById('user-ui').style.display = 'flex';
+            document.getElementById('logged-user').innerText = email;
+            document.getElementById('welcome-msg').innerText = `Welcome to the store, ${email}!`;
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('userEmail');
+            location.reload();
+        }
+
+        // --- 2. PRODUCT LOGIC ---
+        async function loadProducts() {
+            try {
+                const res = await fetch(`${API}/products`);
+                const products = await res.json();
+                const container = document.getElementById('products');
+                
+                if (products.length === 0) {
+                    container.innerHTML = "<h3>No products found. Did you run seed.js?</h3>";
+                    return;
+                }
+
+                container.innerHTML = products.map(p => `
+                    <div class="card">
+                        <img src="${p.image}" alt="${p.name}">
+                        <h3>${p.name}</h3>
+                        <p style="color:#666; font-size:0.9rem;">${p.description}</p>
+                        <p class="price">$${p.price}</p>
+                        <button class="btn-add" onclick="addToCart()">Add to Cart</button>
+                    </div>
+                `).join('');
+            } catch (err) {
+                document.getElementById('products').innerHTML = "<h3>Error loading products from server.</h3>";
+            }
+        }
+
+        function addToCart() {
+    // Increment the counter
+    cartCount++;
+    
+    // Update the number on the screen
+    const cartDisplay = document.getElementById('cart-count');
+    if (cartDisplay) {
+        cartDisplay.innerText = cartCount;
+    }
+    
+    // Optional: A nice little alert
+    console.log("Cart updated:", cartCount);
+}
+
+        // --- 3. INITIALIZATION ---
+        window.onload = () => {
+            loadProducts();
+            const savedUser = localStorage.getItem('userEmail');
+            if (savedUser) {
+                updateUI(savedUser);
+            }
+        };
+    </script>
+</body>
+</html>funct
